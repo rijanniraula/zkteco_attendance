@@ -26,13 +26,20 @@ async function getRealTimeLogs() {
   }
 }
 
-async function getAttendanceLogs() {
+async function getAttendanceLogs(req, res) {
   const device = await connectDevice();
   try {
     const attendanceLogs = await device.getAttendances();
-    console.log(attendanceLogs);
+    res
+      .status(200)
+      .json({
+        success: true,
+        ...attendanceLogs,
+        totalLogs: attendanceLogs.data.length,
+      });
   } catch (error) {
     console.error("Error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 }
 

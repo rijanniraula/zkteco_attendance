@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 // const connectDB = require("./config/db");
 const { getRealTimeLogs } = require("./controllers/zkteco");
+const routes = require("./routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,8 +16,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API routes (including your /api/users/sync route)
-// ...
+// API routes
+app.use("/api", routes);
 
 // 404 handler
 app.use((req, res) => {
