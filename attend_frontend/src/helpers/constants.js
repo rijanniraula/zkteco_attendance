@@ -1,3 +1,5 @@
+export const API_URL = "http://localhost:3000/api/";
+
 export const ENDPOINTS = {
-  GET_ATTENDANCE: "/api/attendance/get-attendance",
+  GET_ATTENDANCE: "zkteco/get-attendance",
 };
