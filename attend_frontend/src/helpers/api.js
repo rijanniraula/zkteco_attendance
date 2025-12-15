@@ -1,14 +1,14 @@
 import { API_URL } from "./constants";
 
-export const makeApiRequest = async (
+export const makeApiRequest = async ({
   endpoint,
   contentType = "application/json",
   requestBody,
   method = "GET",
   stringify = true,
   signal,
-  responseType = "json"
-) => {
+  responseType = "json",
+}) => {
   try {
     const response = await fetch(API_URL + endpoint, {
       method,
