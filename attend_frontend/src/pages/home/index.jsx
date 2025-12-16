@@ -6,6 +6,8 @@ import StatsCard from "@/components/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Users, Logs, Calculator } from "lucide-react";
 import LogsFilter from "@/components/LogsFilter";
+import { DataTable } from "@/components/common/DataTable";
+import { getAttendanceLogsColumns } from "@/lib/datasheetConstants";
 
 const HomePage = () => {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
@@ -79,6 +81,7 @@ const HomePage = () => {
 
   //get attendance logs
   const handleGetAttendance = async (startDate, endDate) => {
+    setAttendanceLogs(dummyAttendanceLogs);
     try {
       const response = await makeApiRequest({
         endpoint: ENDPOINTS.GET_ATTENDANCE,
@@ -99,6 +102,8 @@ const HomePage = () => {
   useEffect(() => {
     handleGetDeviceInfo();
   }, []);
+
+  console.log(attendanceLogs);
   return (
     <div>
       <main className="flex flex-col gap-4 p-8">
@@ -123,6 +128,11 @@ const HomePage = () => {
         </div>
 
         <LogsFilter onGetAttendance={handleGetAttendance} />
+
+        <DataTable
+          data={attendanceLogs?.data || []}
+          columns={getAttendanceLogsColumns() || []}
+        />
       </main>
     </div>
   );
