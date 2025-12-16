@@ -10,7 +10,7 @@ import {
 
 export function DataTable({ data, columns }) {
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>

@@ -4,10 +4,18 @@ import { ENDPOINTS } from "@/helpers/constants";
 import { dummyDeviceInfo, dummyAttendanceLogs } from "@/lib/dummyData";
 import StatsCard from "@/components/StatsCard";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Users, Logs, Calculator } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Users,
+  Logs,
+  Calculator,
+  Download,
+} from "lucide-react";
 import LogsFilter from "@/components/LogsFilter";
 import { DataTable } from "@/components/common/DataTable";
 import { getAttendanceLogsColumns } from "@/lib/datasheetConstants";
+import { Button } from "@/components/ui/button";
 
 const HomePage = () => {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
@@ -129,10 +137,30 @@ const HomePage = () => {
 
         <LogsFilter onGetAttendance={handleGetAttendance} />
 
-        <DataTable
-          data={attendanceLogs?.data || []}
-          columns={getAttendanceLogsColumns() || []}
-        />
+        <div className="border shadow-sm p-4 rounded-md">
+          <div className="mb-4 flex justify-between items-center">
+            <div>
+              <h1 className="text-lg font-bold">Attendance Logs</h1>
+              <p className="text-sm text-muted-foreground">
+                Showing {attendanceLogs?.data?.length} attendance logs
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline">
+                <Download className="w-4 h-4" />
+                Export Logs
+              </Button>
+              <Button>
+                <Download className="w-4 h-4" />
+                Get Today's Logs
+              </Button>
+            </div>
+          </div>
+          <DataTable
+            data={attendanceLogs?.data || []}
+            columns={getAttendanceLogsColumns() || []}
+          />
+        </div>
       </main>
     </div>
   );
