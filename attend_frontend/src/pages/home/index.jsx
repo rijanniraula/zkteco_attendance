@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { makeApiRequest } from "@/helpers/api";
 import { ENDPOINTS } from "@/helpers/constants";
-import { dummyDeviceInfo, dummyAttendanceLogs } from "@/lib/dummyData";
+import { dummyDeviceInfo } from "@/lib/dummyData";
 import StatsCard from "@/components/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,11 +14,12 @@ import {
 } from "lucide-react";
 import LogsFilter from "@/components/LogsFilter";
 import { DataTable } from "@/components/common/DataTable";
-import { getAttendanceLogsColumns } from "@/lib/datasheetConstants";
 import { Button } from "@/components/ui/button";
 
 const HomePage = () => {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [startDate, setStartDate] = useState();
+  const [endDate, setEndDate] = useState();
   const [deviceInfo, setDeviceInfo] = useState({
     success: "Disconnected",
     userCounts: 0,
@@ -89,7 +90,8 @@ const HomePage = () => {
 
   //get attendance logs
   const handleGetAttendance = async (startDate, endDate) => {
-    setAttendanceLogs(dummyAttendanceLogs);
+    setStartDate(startDate);
+    setEndDate(endDate);
     try {
       const response = await makeApiRequest({
         endpoint: ENDPOINTS.GET_ATTENDANCE,
@@ -97,8 +99,7 @@ const HomePage = () => {
         requestBody: { startDate, endDate },
       });
       if (response.success) {
-        // setAttendanceLogs(response);
-        setAttendanceLogs(dummyAttendanceLogs);
+        setAttendanceLogs(response);
       } else {
         console.error("Failed to get attendance logs");
       }
@@ -107,11 +108,47 @@ const HomePage = () => {
     }
   };
 
+  //export logs
+  const handleExportLogs = async () => {
+    if (!startDate || !endDate) {
+      alert("Please select a date range first");
+      return;
+    }
+
+    try {
+      // Fetch the Excel file as a blob
+      const blob = await makeApiRequest({
+        endpoint: ENDPOINTS.EXPORT_LOGS,
+        method: "POST",
+        requestBody: { startDate, endDate },
+        responseType: "blob",
+      });
+
+      console.log("Excel file received, size:", blob.size, "bytes");
+
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting logs", error);
+      alert("Failed to export logs. Please try again.");
+    }
+  };
+
   useEffect(() => {
     handleGetDeviceInfo();
   }, []);
 
-  console.log(attendanceLogs);
   return (
     <div>
       <main className="flex flex-col gap-4 p-8">
@@ -135,7 +172,13 @@ const HomePage = () => {
           })}
         </div>
 
-        <LogsFilter onGetAttendance={handleGetAttendance} />
+        <LogsFilter
+          onGetAttendance={handleGetAttendance}
+          startDate={startDate}
+          endDate={endDate}
+          setStartDate={setStartDate}
+          setEndDate={setEndDate}
+        />
 
         <div className="border shadow-sm p-4 rounded-md">
           <div className="mb-4 flex justify-between items-center">
@@ -146,19 +189,26 @@ const HomePage = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleExportLogs}>
                 <Download className="w-4 h-4" />
                 Export Logs
               </Button>
-              <Button>
+              <Button
+                onClick={() =>
+                  handleGetAttendance(
+                    new Date().toISOString().split("T")[0],
+                    new Date().toISOString().split("T")[0]
+                  )
+                }
+              >
                 <Download className="w-4 h-4" />
                 Get Today's Logs
               </Button>
             </div>
           </div>
           <DataTable
-            data={attendanceLogs?.data || []}
-            columns={getAttendanceLogsColumns() || []}
+            data={attendanceLogs?.report?.rows || []}
+            columns={attendanceLogs?.report?.columns || []}
           />
         </div>
       </main>

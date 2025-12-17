@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { CalendarDays, Download } from "lucide-react";
 
-const LogsFilter = ({ onGetAttendance }) => {
-  const [startDate, setStartDate] = useState();
-  const [endDate, setEndDate] = useState();
-
+const LogsFilter = ({
+  onGetAttendance,
+  startDate,
+  endDate,
+  setStartDate,
+  setEndDate,
+}) => {
   const handleGetAttendance = () => {
     onGetAttendance(startDate, endDate);
   };
