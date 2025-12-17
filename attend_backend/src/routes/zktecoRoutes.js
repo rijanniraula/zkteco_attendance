@@ -1,4 +1,8 @@
-const { getRealTimeLogs, getAttendanceLogs } = require("../controllers/zkteco");
+const {
+  getRealTimeLogs,
+  getAttendanceLogs,
+  exportAttendanceLogs,
+} = require("../controllers/zkteco");
 const express = require("express");
 const router = express.Router();
 
@@ -6,6 +10,9 @@ const router = express.Router();
 router.get("/get-real-time-logs", getRealTimeLogs);
 
 // get attendance logs
-router.get("/get-attendance", getAttendanceLogs);
+router.post("/get-attendance", getAttendanceLogs);
+
+// export attendance logs
+router.post("/export", exportAttendanceLogs);
 
 module.exports = router;
