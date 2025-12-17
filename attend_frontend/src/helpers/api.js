@@ -21,7 +21,17 @@ export const makeApiRequest = async ({
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    return responseType === "json" ? response.json() : response.text();
+
+    // Handle different response types
+    switch (responseType) {
+      case "blob":
+        return response.blob();
+      case "text":
+        return response.text();
+      case "json":
+      default:
+        return response.json();
+    }
   } catch (error) {
     console.error(error);
     throw new Error(`API request failed: ${error.message}`);
