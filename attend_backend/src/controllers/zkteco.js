@@ -8,8 +8,8 @@ const {
 } = require("../helpers/AttendanceReportGenerator");
 
 async function getRealTimeLogs() {
-  const device = await connectDevice();
   try {
+    const device = await connectDevice();
     // Listen for real-time logs
     await device.getRealTimeLogs((realTimeLog) => {
       console.log("realTimeLog", realTimeLog);
@@ -31,33 +31,21 @@ async function getRealTimeLogs() {
   }
 }
 
+async function getDeviceInfo(req, res) {
+  try {
+    const device = await connectDevice();
+    const deviceInfo = await device.getDeviceInfo();
+    res.status(200).json({ success: true, data: deviceInfo });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 async function getAttendanceLogs(req, res) {
   const { startDate, endDate } = req.body;
-  const filteredLogs = dummyAttendanceLogs.data.filter((log) => {
-    const logDate = new Date(log.record_time);
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // end of day
-    return logDate >= start && logDate <= end;
-  });
-
-  // Generate report data
-  const reportData = generateAttendanceReportData(
-    filteredLogs,
-    startDate,
-    endDate
-  );
-
-  return res.status(200).json({
-    success: true,
-    data: filteredLogs,
-    report: reportData,
-    startDate: req.body.startDate,
-    endDate: req.body.endDate,
-    totalLogs: filteredLogs.length,
-  });
-  const device = await connectDevice();
   try {
+    const device = await connectDevice();
     const attendanceLogs = await device.getAttendances();
     const filteredLogs = attendanceLogs.data.filter((log) => {
       const logDate = new Date(log.record_time);
@@ -90,16 +78,12 @@ async function getAttendanceLogs(req, res) {
 const exportAttendanceLogs = async (req, res) => {
   const { startDate, endDate } = req.body;
   console.log({ startDate, endDate });
-  // const device = await connectDevice();
   try {
-    // const attendanceLogs = await device.getAttendances();
-    // const filteredLogs = attendanceLogs.data.filter((log) => {
-    //   const logDate = new Date(log.record_time);
-    //   return logDate >= new Date(startDate) && logDate <= new Date(endDate);
-    // });
+    const device = await connectDevice();
+    const attendanceLogs = await device.getAttendances();
 
     // device not connected
-    const filteredLogs = dummyAttendanceLogs.data.filter((log) => {
+    const filteredLogs = attendanceLogs.data.filter((log) => {
       const logDate = new Date(log.record_time);
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -146,4 +130,5 @@ module.exports = {
   getRealTimeLogs,
   getAttendanceLogs,
   exportAttendanceLogs,
+  getDeviceInfo,
 };

@@ -2,9 +2,13 @@ const {
   getRealTimeLogs,
   getAttendanceLogs,
   exportAttendanceLogs,
+  getDeviceInfo,
 } = require("../controllers/zkteco");
 const express = require("express");
 const router = express.Router();
+
+// get device info
+router.get("/get-device-info", getDeviceInfo);
 
 // get real time logs
 router.get("/get-real-time-logs", getRealTimeLogs);
