@@ -7,8 +7,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
 
-export function DataTable({ data, columns }) {
+export function DataTable({ data, columns, isLoading }) {
   return (
     <div className="overflow-hidden">
       <Table>
@@ -20,7 +21,13 @@ export function DataTable({ data, columns }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.length > 0 ? (
+          {isLoading ? (
+            <TableRow className="flex justify-center items-center h-24">
+              <TableCell colSpan={columns.length} className=" text-center ">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </TableCell>
+            </TableRow>
+          ) : data.length > 0 ? (
             data.map((row, index) => (
               <TableRow key={index}>
                 {columns.map((column) => (

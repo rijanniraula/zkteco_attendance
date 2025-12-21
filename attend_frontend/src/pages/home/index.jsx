@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { makeApiRequest } from "@/helpers/api";
 import { ENDPOINTS } from "@/helpers/constants";
-import { dummyDeviceInfo } from "@/lib/dummyData";
+// import { dummyDeviceInfo } from "@/lib/dummyData";
 import StatsCard from "@/components/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,6 +11,9 @@ import {
   Logs,
   Calculator,
   Download,
+  Loader2,
+  RefreshCw,
+  OctagonAlert,
 } from "lucide-react";
 import LogsFilter from "@/components/LogsFilter";
 import { DataTable } from "@/components/common/DataTable";
@@ -27,17 +30,23 @@ const HomePage = () => {
     logCapacity: 0,
     deviceName: "",
   });
+  const [isDeviceInfoLoading, setIsDeviceInfoLoading] = useState(false);
+  const [isAttendanceLogsLoading, setIsAttendanceLogsLoading] = useState(false);
 
   const deviceInfoMap = useMemo(() => {
     return [
       {
         title: "Status",
         value: (
-          <Badge variant={deviceInfo.success ? "success" : "destructive"}>
-            {deviceInfo.success ? "Connected" : "Disconnected"}
+          <Badge
+            variant={
+              deviceInfo.success === "Connected" ? "success" : "destructive"
+            }
+          >
+            {deviceInfo.success === "Connected" ? "Connected" : "Disconnected"}
           </Badge>
         ),
-        icon: deviceInfo.success ? CheckCircle : XCircle,
+        icon: deviceInfo.success === "Connected" ? CheckCircle : XCircle,
       },
       {
         title: "User Counts",
@@ -64,7 +73,8 @@ const HomePage = () => {
 
   //get device info
   const handleGetDeviceInfo = async () => {
-    setDeviceInfo({ ...dummyDeviceInfo, success: "Disconnected" });
+    // setDeviceInfo({ ...dummyDeviceInfo, success: "Disconnected" });
+    setIsDeviceInfoLoading(true);
     try {
       const response = await makeApiRequest({
         endpoint: ENDPOINTS.GET_DEVICE_INFO,
@@ -85,6 +95,8 @@ const HomePage = () => {
       }
     } catch (error) {
       console.error("Error getting device info", error);
+    } finally {
+      setIsDeviceInfoLoading(false);
     }
   };
 
@@ -92,6 +104,7 @@ const HomePage = () => {
   const handleGetAttendance = async (startDate, endDate) => {
     setStartDate(startDate);
     setEndDate(endDate);
+    setIsAttendanceLogsLoading(true);
     try {
       const response = await makeApiRequest({
         endpoint: ENDPOINTS.GET_ATTENDANCE,
@@ -105,6 +118,8 @@ const HomePage = () => {
       }
     } catch (error) {
       console.error("Error getting attendance logs", error);
+    } finally {
+      setIsAttendanceLogsLoading(false);
     }
   };
 
@@ -148,6 +163,31 @@ const HomePage = () => {
   useEffect(() => {
     handleGetDeviceInfo();
   }, []);
+
+  if (isDeviceInfoLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="w-12 h-12 animate-spin mr-1" />
+      </div>
+    );
+  }
+
+  if (deviceInfo.success === "Disconnected") {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+            <OctagonAlert className="w-8 h-8 text-red-500" />
+            <span className="mb-1">Device Not Connected</span>
+          </h1>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -209,6 +249,7 @@ const HomePage = () => {
           <DataTable
             data={attendanceLogs?.report?.rows || []}
             columns={attendanceLogs?.report?.columns || []}
+            isLoading={isAttendanceLogsLoading}
           />
         </div>
       </main>
