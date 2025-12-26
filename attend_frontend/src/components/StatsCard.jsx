@@ -8,7 +8,7 @@ const StatsCard = ({ title, value, icon }) => {
         <Icon name={icon} className="w-4 h-4" />
         <h3>{title}</h3>
       </div>
-      <p className="text-lg font-bold">{value || "N/A"}</p>
+      <div className="text-lg font-bold">{value || "N/A"}</div>
     </div>
   );
 };

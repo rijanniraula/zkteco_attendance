@@ -81,7 +81,7 @@ const HomePage = () => {
       });
       if (response.success) {
         setDeviceInfo({
-          ...response,
+          ...response?.data,
           success: response.success ? "Connected" : "Disconnected",
         });
       } else {

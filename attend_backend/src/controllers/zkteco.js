@@ -35,8 +35,11 @@ async function getDeviceInfo(req, res) {
   try {
     const device = await connectDevice();
     const deviceInfo = await device.getInfo();
-
-    res.status(200).json({ success: true, data: deviceInfo });
+    const deviceName = await device.getDeviceName();
+    res.status(200).json({
+      success: true,
+      data: { ...deviceInfo, deviceName },
+    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ success: false, message: error.message });
