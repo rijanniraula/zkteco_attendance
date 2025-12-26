@@ -90,12 +90,29 @@ const generateExcelReport = async (reportData, startDate, endDate) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Attendance Report");
 
-  // Set columns
-  worksheet.columns = reportData.columns;
+  // Set heading
+  const cell = worksheet.getCell("A1");
+  cell.value = `Attendance Report ${startDate} to ${endDate}`;
+  cell.alignment = { vertical: "middle", horizontal: "center" };
+  cell.font = { bold: true, size: 14 };
 
-  // Add rows
+  worksheet.addRow([
+    "SN",
+    "UID",
+    "Name",
+    ...reportData.dayColumns.map((column) => column.header),
+    "Absent Days",
+  ]);
+
+  // Add rows starting from row 2
   reportData.rows.forEach((row) => {
-    worksheet.addRow(row);
+    worksheet.addRow([
+      row.sn,
+      row.user_id,
+      row.name,
+      ...reportData.dayColumns.map((column) => row[column.key]),
+      row.absent_days,
+    ]);
   });
 
   return workbook.xlsx.writeBuffer();
