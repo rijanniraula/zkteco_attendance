@@ -1,4 +1,11 @@
 const ExcelJS = require("exceljs");
+const { users } = require("./usersMap");
+
+const getUserDisplayName = (userId) => {
+  const user = users.find((user) => user.uid == userId);
+  console.log("user", userId, "->", user);
+  return user?.displayName || "N/A";
+};
 
 /**
  * Generate attendance report data structure
@@ -51,7 +58,7 @@ const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
     const row = {
       sn: index + 1,
       user_id: userId,
-      name: "",
+      name: getUserDisplayName(userId),
     };
 
     let absentDays = 0;
@@ -74,7 +81,7 @@ const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
 
   return {
     columns,
-    rows,
+    rows: rows.sort((a, b) => a.user_id - b.user_id),
     dayColumns,
   };
 };
