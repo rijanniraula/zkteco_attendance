@@ -2,8 +2,7 @@ const ExcelJS = require("exceljs");
 const { users } = require("./usersMap");
 
 const getUserDisplayName = (userId) => {
-  const user = users.find((user) => user.user_id == userId);
-  console.log("user", userId, "->", user);
+  const user = users.find((user) => user.userId == userId);
   return user?.displayName || "N/A";
 };
 
