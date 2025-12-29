@@ -18,6 +18,7 @@ import {
 import LogsFilter from "@/components/LogsFilter";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
+import DeviceInfo from "@/components/DeviceInfo";
 
 const HomePage = () => {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
@@ -32,44 +33,7 @@ const HomePage = () => {
   });
   const [isDeviceInfoLoading, setIsDeviceInfoLoading] = useState(false);
   const [isAttendanceLogsLoading, setIsAttendanceLogsLoading] = useState(false);
-
-  const deviceInfoMap = useMemo(() => {
-    return [
-      {
-        title: "Status",
-        value: (
-          <Badge
-            variant={
-              deviceInfo.success === "Connected" ? "success" : "destructive"
-            }
-          >
-            {deviceInfo.success === "Connected" ? "Connected" : "Disconnected"}
-          </Badge>
-        ),
-        icon: deviceInfo.success === "Connected" ? CheckCircle : XCircle,
-      },
-      {
-        title: "User Counts",
-        value: deviceInfo.userCounts,
-        icon: Users,
-      },
-      {
-        title: "Log Counts",
-        value: (
-          <>
-            {deviceInfo.logCounts} / {deviceInfo.logCapacity}
-          </>
-        ),
-        icon: Logs,
-      },
-
-      {
-        title: "Device Name",
-        value: deviceInfo.deviceName,
-        icon: Calculator,
-      },
-    ];
-  }, [deviceInfo]);
+  const [deviceSyncAt, setDeviceSyncAt] = useState(null);
 
   //get device info
   const handleGetDeviceInfo = async () => {
@@ -84,6 +48,7 @@ const HomePage = () => {
           ...response?.data,
           success: response.success ? "Connected" : "Disconnected",
         });
+        setDeviceSyncAt(new Date().toISOString().split("T")[1].split(".")[0]);
       } else {
         setDeviceInfo({
           success: "Disconnected",
@@ -164,53 +129,42 @@ const HomePage = () => {
     handleGetDeviceInfo();
   }, []);
 
-  if (isDeviceInfoLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-12 h-12 animate-spin mr-1" />
-      </div>
-    );
-  }
+  // if (isDeviceInfoLoading) {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       <Loader2 className="w-12 h-12 animate-spin mr-1" />
+  //     </div>
+  //   );
+  // }
 
-  if (deviceInfo.success === "Disconnected") {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
-            <OctagonAlert className="w-8 h-8 text-red-500" />
-            <span className="mb-1">Device Not Connected</span>
-          </h1>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            <RefreshCw className="w-4 h-4" />
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // if (deviceInfo.success === "Disconnected") {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       <div className="text-center">
+  //         <h1 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+  //           <OctagonAlert className="w-8 h-8 text-red-500" />
+  //           <span className="mb-1">Device Not Connected</span>
+  //         </h1>
+  //         <Button variant="outline" onClick={() => window.location.reload()}>
+  //           <RefreshCw className="w-4 h-4" />
+  //           Retry
+  //         </Button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
-    <div>
-      <main className="flex flex-col gap-4 p-8">
+    <main className="p-8 bg-muted/40 w-full min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-8 px-8">
         <div>
-          <h1 className="text-2xl font-bold">Attendance Log Manager</h1>
+          <h1 className="text-3xl font-bold">ZKTeco Attendance Log Manager</h1>
           <p className="text-sm text-muted-foreground">
-            Extract and manage attendance logs
+            Extract and manage attendance logs for ZKTeco devices
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mt-4">
-          {deviceInfoMap.map((item, index) => {
-            return (
-              <StatsCard
-                key={index}
-                title={item.title}
-                value={item.value || "-"}
-                icon={item.icon}
-              />
-            );
-          })}
-        </div>
+        <DeviceInfo deviceInfo={deviceInfo} deviceSyncAt={deviceSyncAt} />
 
         <LogsFilter
           onGetAttendance={handleGetAttendance}
@@ -252,8 +206,8 @@ const HomePage = () => {
             isLoading={isAttendanceLogsLoading}
           />
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 
