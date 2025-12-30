@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { CalendarDays, Download } from "lucide-react";
+import { ATTENDANCE_DATE_RANGE } from "../helpers/constants";
 
 const LogsFilter = ({
   onGetAttendance,
@@ -10,17 +11,37 @@ const LogsFilter = ({
   setStartDate,
   setEndDate,
 }) => {
+  const [selectedDateRange, setSelectedDateRange] = useState(null);
+
   const handleGetAttendance = () => {
     onGetAttendance(startDate, endDate);
   };
 
+  const handleDateRangeClick = (date) => {
+    setSelectedDateRange(date.label);
+    setStartDate(date.startDate);
+    setEndDate(date.endDate);
+  };
+
   return (
-    <div className="border shadow-sm p-4 rounded-md">
+    <div className="border shadow-sm p-4 rounded-md space-y-4 bg-card">
       <div>
-        <h1 className=" font-semibold">Filter Attendance Logs</h1>
+        <h1 className=" font-semibold">Filter Attendance Records</h1>
         <p className="text-xs text-muted-foreground">
           Select date range to retrieve attendance records
         </p>
+      </div>
+      <div className="flex items-center gap-2">
+        {ATTENDANCE_DATE_RANGE.map((date) => (
+          <Button
+            key={date.label}
+            variant={selectedDateRange === date.label ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleDateRangeClick(date)}
+          >
+            {date.label}
+          </Button>
+        ))}
       </div>
 
       <div className="flex items-end gap-3 mt-4">
@@ -33,7 +54,9 @@ const LogsFilter = ({
             id="startDate"
             type="date"
             className="w-full flex flex-col justify-center"
-            value={startDate}
+            value={
+              startDate ? new Date(startDate).toISOString().split("T")[0] : ""
+            }
             onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
@@ -46,7 +69,7 @@ const LogsFilter = ({
             id="endDate"
             className="w-full flex flex-col justify-center"
             type="date"
-            value={endDate}
+            value={endDate ? new Date(endDate).toISOString().split("T")[0] : ""}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
@@ -55,7 +78,7 @@ const LogsFilter = ({
           onClick={handleGetAttendance}
         >
           <Download className="w-4 h-4" />
-          Get Attendance Logs
+          Get Attendance Records
         </Button>
       </div>
     </div>

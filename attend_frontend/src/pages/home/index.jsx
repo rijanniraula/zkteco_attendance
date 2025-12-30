@@ -155,13 +155,14 @@ const HomePage = () => {
   // }
 
   return (
-    <main className="p-8 bg-muted/40 w-full min-h-screen">
+    <main className="p-8 bg-muted w-full min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8 px-8">
         <div>
           <h1 className="text-3xl font-bold">ZKTeco Attendance Log Manager</h1>
           <p className="text-sm text-muted-foreground">
             Extract and manage attendance logs for ZKTeco devices
           </p>
+          <div className="mt-2 h-1 w-24 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-500/50" />
         </div>
 
         <DeviceInfo deviceInfo={deviceInfo} deviceSyncAt={deviceSyncAt} />
@@ -174,7 +175,7 @@ const HomePage = () => {
           setEndDate={setEndDate}
         />
 
-        <div className="border shadow-sm p-4 rounded-md">
+        <div className="border shadow-sm p-4 rounded-md bg-card">
           <div className="mb-4 flex justify-between items-center">
             <div>
               <h1 className="text-lg font-bold">Attendance Logs</h1>
@@ -183,20 +184,13 @@ const HomePage = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleExportLogs}>
-                <Download className="w-4 h-4" />
-                Export Logs
-              </Button>
               <Button
-                onClick={() =>
-                  handleGetAttendance(
-                    new Date().toISOString().split("T")[0],
-                    new Date().toISOString().split("T")[0]
-                  )
-                }
+                variant="outline"
+                disabled={!startDate || !endDate}
+                onClick={handleExportLogs}
               >
                 <Download className="w-4 h-4" />
-                Get Today's Logs
+                Export Logs
               </Button>
             </div>
           </div>
