@@ -1,13 +1,69 @@
 const { PART_TIME_UIDS, STAFF_UIDS } = require("../config/constants");
 
-const ZK_IP = process.env.ZK_IP || "192.168.1.18";
+const os = require('os');
+const net = require('net');
+
+// Helper to get local subnet (e.g., '192.168.1')
+const getLocalSubnet = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        const parts = iface.address.split('.');
+        parts.pop(); // remove last octet
+        return parts.join('.');
+      }
+    }
+  }
+  return null;
+};
+
+// Scan the local subnet for a device responding on ZK_PORT
+const discoverZKIP = async () => {
+  const subnet = getLocalSubnet();
+  console.log('Subnet detected:', subnet);
+  if (!subnet) return null;
+  const timeout = 300; // ms per attempt
+  for (let i = 1; i < 255; i++) {
+    const ip = `${subnet}.${i}`;
+    console.log('Attempting IP:', ip);
+    try {
+      await new Promise((resolve, reject) => {
+        const socket = new net.Socket();
+        socket.setTimeout(timeout);
+        socket.once('connect', () => {
+          console.log('Device found at IP:', ip);
+          socket.destroy();
+          resolve(ip);
+        });
+        socket.once('error', () => {
+          socket.destroy();
+          reject();
+        });
+        socket.once('timeout', () => {
+          socket.destroy();
+          reject();
+        });
+        socket.connect(parseInt(process.env.ZK_PORT, 10) || 4370, ip);
+      });
+      // If we reach here, the IP responded
+      return ip;
+    } catch (_) {
+      // ignore and continue scanning
+    }
+  }
+  return null;
+};
+
 const ZK_PORT = parseInt(process.env.ZK_PORT, 10) || 4370;
 const ZK_TIMEOUT = parseInt(process.env.ZK_TIMEOUT, 10) || 10000;
 const ZK_INOUT = parseInt(process.env.ZK_INOUT, 10) || 4000;
 
 const connectDevice = async () => {
   const Zkteco = require("zkteco-js");
-  const device = new Zkteco(`${ZK_IP}`, ZK_PORT, ZK_TIMEOUT, ZK_INOUT);
+  const dynamicIP = await discoverZKIP();
+  const ip = dynamicIP || process.env.ZK_IP;
+  const device = new Zkteco(`${ip}`, ZK_PORT, ZK_TIMEOUT, ZK_INOUT);
   await device.createSocket();
   await device.enableDevice();
 

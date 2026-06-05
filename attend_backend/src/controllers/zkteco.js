@@ -9,7 +9,7 @@ const {
 
 const parseDateLocal = (dateStr, isEnd = false) => {
   if (!dateStr) return new Date();
-  
+
   const yyyymmddRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (yyyymmddRegex.test(dateStr)) {
     const [year, month, day] = dateStr.split("-").map(Number);
