@@ -7,6 +7,26 @@ const {
   generateExcelReport,
 } = require("../helpers/AttendanceReportGenerator");
 
+const parseDateLocal = (dateStr, isEnd = false) => {
+  if (!dateStr) return new Date();
+  
+  const yyyymmddRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (yyyymmddRegex.test(dateStr)) {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return isEnd
+      ? new Date(year, month - 1, day, 23, 59, 59, 999)
+      : new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+
+  const d = new Date(dateStr);
+  if (isEnd) {
+    d.setHours(23, 59, 59, 999);
+  } else {
+    d.setHours(0, 0, 0, 0);
+  }
+  return d;
+};
+
 async function getRealTimeLogs() {
   try {
     const device = await connectDevice();
@@ -47,22 +67,25 @@ async function getDeviceInfo(req, res) {
 }
 
 async function getAttendanceLogs(req, res) {
-  const { startDate, endDate } = req.body;
+  const { startDate, endDate, userId, showPunchTimes } = req.body;
   try {
     const device = await connectDevice();
     const attendanceLogs = await device.getAttendances();
+    const start = parseDateLocal(startDate, false);
+    const end = parseDateLocal(endDate, true);
     const filteredLogs = attendanceLogs.data.filter((log) => {
       const logDate = new Date(log.record_time);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); //  end of day
-      return logDate >= start && logDate <= end;
+      const isWithinDate = logDate >= start && logDate <= end;
+      const matchesUser = userId && userId !== "all" ? String(log.user_id) === String(userId) : true;
+      return isWithinDate && matchesUser;
     });
     // Generate report data
     const reportData = generateAttendanceReportData(
       filteredLogs,
       startDate,
-      endDate
+      endDate,
+      userId && userId !== "all" ? userId : null,
+      showPunchTimes === true || showPunchTimes === "true"
     );
 
     return res.status(200).json({
@@ -80,19 +103,20 @@ async function getAttendanceLogs(req, res) {
 }
 
 const exportAttendanceLogs = async (req, res) => {
-  const { startDate, endDate } = req.body;
-  console.log({ startDate, endDate });
+  const { startDate, endDate, userId, showPunchTimes } = req.body;
+  console.log({ startDate, endDate, userId, showPunchTimes });
   try {
     const device = await connectDevice();
     const attendanceLogs = await device.getAttendances();
 
     // device not connected
+    const start = parseDateLocal(startDate, false);
+    const end = parseDateLocal(endDate, true);
     const filteredLogs = attendanceLogs.data.filter((log) => {
       const logDate = new Date(log.record_time);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Set to end of day
-      return logDate >= start && logDate <= end;
+      const isWithinDate = logDate >= start && logDate <= end;
+      const matchesUser = userId && userId !== "all" ? String(log.user_id) === String(userId) : true;
+      return isWithinDate && matchesUser;
     });
 
     try {
@@ -100,7 +124,9 @@ const exportAttendanceLogs = async (req, res) => {
       const reportData = generateAttendanceReportData(
         filteredLogs,
         startDate,
-        endDate
+        endDate,
+        userId && userId !== "all" ? userId : null,
+        showPunchTimes === true || showPunchTimes === "true"
       );
 
       // Generate Excel buffer from report data

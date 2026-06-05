@@ -11,21 +11,41 @@ const getUserDisplayName = (userId) => {
  * @param {Array} filteredLogs - Array of attendance logs
  * @param {String} startDate - Start date (YYYY-MM-DD)
  * @param {String} endDate - End date (YYYY-MM-DD)
+ * @param {String} [userId] - Optional user ID to filter by
+ * @param {Boolean} [showPunchTimes] - Optional flag to display punch times
  * @returns {Object} - Report data with columns and rows
  */
-const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
-  console.log({ filteredLogs, startDate, endDate });
+const generateAttendanceReportData = (filteredLogs, startDate, endDate, userId = null, showPunchTimes = false) => {
+  console.log({ filteredLogs, startDate, endDate, userId, showPunchTimes });
 
   // Build date range with headers as day numbers
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const parseLocalMidnight = (dateStr, isEnd = false) => {
+    if (!dateStr) return new Date();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return isEnd
+        ? new Date(year, month - 1, day, 23, 59, 59, 999)
+        : new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
+    const d = new Date(dateStr);
+    if (isEnd) {
+      d.setHours(23, 59, 59, 999);
+    } else {
+      d.setHours(0, 0, 0, 0);
+    }
+    return d;
+  };
+
+  const start = parseLocalMidnight(startDate, false);
+  const end = parseLocalMidnight(endDate, true);
   const dayColumns = [];
-  for (
-    const nextDatePointer = new Date(start);
-    nextDatePointer <= end;
-    nextDatePointer.setDate(nextDatePointer.getDate() + 1)
-  ) {
-    const dayKey = nextDatePointer.toISOString().slice(0, 10);
+  
+  const nextDatePointer = new Date(start);
+  while (nextDatePointer <= end) {
+    const year = nextDatePointer.getFullYear();
+    const month = String(nextDatePointer.getMonth() + 1).padStart(2, '0');
+    const day = String(nextDatePointer.getDate()).padStart(2, '0');
+    const dayKey = `${year}-${month}-${day}`;
     const isSaturday = nextDatePointer.getDay() === 6; // 6 = Saturday
     dayColumns.push({
       header: `${nextDatePointer.getDate()}`,
@@ -33,6 +53,7 @@ const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
       dayKey,
       isSaturday,
     });
+    nextDatePointer.setDate(nextDatePointer.getDate() + 1);
   }
 
   const columns = [
@@ -43,15 +64,37 @@ const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
     { header: "Absent Days", key: "absent_days" },
   ];
 
-  // logs by user and date
+  // logs by user and date containing arrays of punch times
   const logsByUser = filteredLogs.reduce((acc, log) => {
-    const dayKey = new Date(log.record_time).toISOString().slice(0, 10);
-    if (!acc[log.user_id]) acc[log.user_id] = new Set();
-    acc[log.user_id].add(dayKey);
+    const d = new Date(log.record_time);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dayKey = `${year}-${month}-${day}`;
+    
+    let hour = d.getHours();
+    const minute = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour ? hour : 12; // the hour '0' should be '12'
+    const formattedHour = String(hour).padStart(2, '0');
+    const punchTime = `${formattedHour}:${minute} ${ampm}`;
+
+    const userIdStr = String(log.user_id);
+    if (!acc[userIdStr]) acc[userIdStr] = {};
+    if (!acc[userIdStr][dayKey]) acc[userIdStr][dayKey] = [];
+    acc[userIdStr][dayKey].push(punchTime);
     return acc;
   }, {});
 
-  const uniqueUsers = [...new Set(filteredLogs.map((log) => log.user_id))];
+  let uniqueUsers;
+  if (userId) {
+    uniqueUsers = [String(userId)];
+  } else {
+    const mappedUserIds = users.map((u) => String(u.userId));
+    const logUserIds = filteredLogs.map((log) => String(log.user_id));
+    uniqueUsers = [...new Set([...mappedUserIds, ...logUserIds])].sort((a, b) => Number(a) - Number(b));
+  }
 
   const rows = uniqueUsers.map((userId, index) => {
     const row = {
@@ -63,9 +106,14 @@ const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
     let absentDays = 0;
 
     dayColumns.forEach(({ key, dayKey, isSaturday }) => {
-      const hasLog = logsByUser[userId]?.has(dayKey);
+      const punchTimes = logsByUser[userId]?.[dayKey];
+      const hasLog = punchTimes && punchTimes.length > 0;
       if (hasLog) {
-        row[key] = "P";
+        if (showPunchTimes) {
+          row[key] = `P (${punchTimes.join(", ")})`;
+        } else {
+          row[key] = "P";
+        }
       } else if (isSaturday) {
         row[key] = "H";
       } else {
@@ -80,7 +128,7 @@ const generateAttendanceReportData = (filteredLogs, startDate, endDate) => {
 
   return {
     columns,
-    rows: rows.sort((a, b) => a.user_id - b.user_id),
+    rows,
     dayColumns,
   };
 };
