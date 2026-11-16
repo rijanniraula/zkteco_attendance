@@ -1,108 +1,74 @@
-import React, { useMemo } from "react";
-import StatsCard from "./StatsCard";
-import {
-  CheckCircle,
-  XCircle,
-  Users,
-  Logs,
-  Calculator,
-  Activity,
-  ClipboardList,
-} from "lucide-react";
+import React from "react";
+import { formatDistanceToNow, formatDistanceToNowStrict } from "date-fns";
+import { Data, DocumentText, Profile2User, Refresh2 } from "iconsax-reactjs";
 import { cn } from "@/lib/utils";
+import Figures from "./Figures";
 
-const DeviceInfo = ({ deviceInfo, deviceSyncAt }) => {
-  const deviceInfoMap = useMemo(() => {
-    const connectionStatus =
-      deviceInfo.success === "Connected" ? "Connected" : "Disconnected";
-    const ConnectionStatusIcon = () => {
-      return (
-        <span
-          className={cn(
-            connectionStatus === "Connected"
-              ? "text-green-500 bg-green-100"
-              : "text-red-500 bg-red-100 ",
-            "w-10 h-10 rounded-lg flex items-center justify-center"
-          )}
-        >
-          {connectionStatus === "Connected" ? (
-            <Activity className="w-5 h-5" />
-          ) : (
-            <XCircle className="w-5 h-5" />
-          )}
-        </span>
-      );
-    };
+const timeAgo = (iso) => (iso ? `${formatDistanceToNow(new Date(iso))} ago` : "never");
+// "2 min ago", "3 h ago", "5 days ago"
+const shortAgo = (iso) =>
+  `${formatDistanceToNowStrict(new Date(iso))
+    .replace(/ seconds?/, " s")
+    .replace(/ minutes?/, " min")
+    .replace(/ hours?/, " h")} ago`;
+const num = (n) => (n == null ? "—" : Number(n).toLocaleString());
 
-    const connectionStatusClassName =
-      connectionStatus === "Connected"
-        ? "bg-green-50 border-green-200 "
-        : "bg-red-50 border-red-200 ";
-
-    const logCapacityPercentage =
-      (deviceInfo.logCounts / deviceInfo.logCapacity) * 100 || 69;
-
-    return [
-      {
-        title: "Connection Status",
-        value: connectionStatus,
-        subText: `Last synced at ${deviceSyncAt}`,
-        icon: <ConnectionStatusIcon />,
-        className: connectionStatusClassName,
-      },
-      {
-        title: "User Counts",
-        value: deviceInfo.userCounts,
-        subText: "Number of users in the device",
-        icon: <Users className="w-5 h-5" />,
-        className: "bg-blue-50 border-blue-200 text-blue-500",
-        iconClassName: "text-blue-500 bg-blue-100 ",
-      },
-      {
-        title: "Log Count",
-        value: <>{deviceInfo.logCounts}</>,
-        subText: (
-          <>
-            <div className="w-full h-1.5 bg-muted rounded-full">
-              <div
-                className="h-full bg-blue-700 rounded-full"
-                style={{ width: `${logCapacityPercentage}%` }}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {logCapacityPercentage}% Capacity
-            </div>
-          </>
-        ),
-        icon: <ClipboardList className="w-5 h-5" />,
-        iconClassName: "text-blue-700 bg-blue-100",
-      },
-
-      {
-        title: "Device Name",
-        value: deviceInfo.deviceName,
-        subText: "Name of the device",
-        icon: <Calculator className="w-5 h-5" />,
-        iconClassName: "text-blue-700 bg-blue-100",
-      },
-    ];
-  }, [deviceInfo]);
+// data = /admin/device/info response: { info, status, sync, stored }
+const DeviceInfo = ({ data }) => {
+  const info = data?.info || {};
+  const connected = Boolean(data?.status?.connected && data?.info);
+  const capacity = info.logCapacity
+    ? Math.round((info.logCounts / info.logCapacity) * 1000) / 10
+    : 0;
 
   return (
-    <div className="grid grid-cols-4 gap-4 mt-4">
-      {deviceInfoMap.map((item, index) => {
-        return (
-          <StatsCard
-            key={index}
-            title={item.title}
-            value={item.value || "-"}
-            subText={item.subText}
-            icon={item.icon}
-            className={item.className}
-            iconClassName={item.iconClassName}
-          />
-        );
-      })}
+    <div className="grid gap-4 xl:grid-cols-[minmax(260px,1fr)_3fr]">
+      {/* Device identity + live status */}
+      <div className="rounded-xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27/0.03)]">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+            connected ? "bg-present-bg text-present" : "bg-absent-bg text-absent"
+          )}
+        >
+          <span className="relative flex size-1.5">
+            {connected && (
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-present opacity-70" />
+            )}
+            <span className={cn("relative inline-flex size-1.5 rounded-full", connected ? "bg-present" : "bg-absent")} />
+          </span>
+          {connected ? "Online" : "Offline"}
+        </span>
+        <div className="mt-2 text-lg font-semibold">
+          {info.deviceName || (connected ? "ZKTeco device" : "Not reachable")}
+        </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          {connected
+            ? <>{data.status.ip} · checked {timeAgo(data.status.lastConnectedAt)}</>
+            : data?.status?.lastError || "Waiting for the device to come back on the network"}
+        </div>
+      </div>
+
+      <Figures
+        items={[
+          { label: "users on device", value: num(info.userCounts), icon: Profile2User, tone: "primary" },
+          {
+            label: "logs on device",
+            value: num(info.logCounts),
+            icon: DocumentText,
+            tone: "primary",
+            note: `${capacity}% full`,
+          },
+          { label: "stored in app", value: num(data?.stored?.logCount), icon: Data, tone: "primary" },
+          {
+            label: "last sync",
+            value: data?.sync?.lastSyncAt ? shortAgo(data.sync.lastSyncAt) : "—",
+            icon: Refresh2,
+            tone: data?.sync?.lastError ? "absent" : "primary",
+            note: data?.sync?.lastError ? "last attempt failed" : undefined,
+          },
+        ]}
+      />
     </div>
   );
 };

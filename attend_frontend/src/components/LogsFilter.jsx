@@ -1,84 +1,91 @@
 import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { CalendarDays, Download } from "lucide-react";
+import { ArrowRight, SearchNormal1 } from "iconsax-reactjs";
+import { Spinner } from "./ui/spinner";
 import { ATTENDANCE_DATE_RANGE } from "../helpers/constants";
+import { cn } from "@/lib/utils";
 
+// Date range toolbar: quick ranges as a segmented control, then from/to, extra filters, Show
 const LogsFilter = ({
   onGetAttendance,
   startDate,
   endDate,
   setStartDate,
   setEndDate,
+  isLoading,
+  defaultRange = "This Month",
+  children,
 }) => {
-  const [selectedDateRange, setSelectedDateRange] = useState(null);
-
-  const handleGetAttendance = () => {
-    onGetAttendance(startDate, endDate);
-  };
+  const [selectedDateRange, setSelectedDateRange] = useState(defaultRange);
 
   const handleDateRangeClick = (date) => {
     setSelectedDateRange(date.label);
     setStartDate(date.startDate);
     setEndDate(date.endDate);
+    onGetAttendance(date.startDate, date.endDate);
   };
 
   return (
-    <div className="border shadow-sm p-4 rounded-md space-y-4 bg-card">
-      <div>
-        <h1 className=" font-semibold">Filter Attendance Records</h1>
-        <p className="text-xs text-muted-foreground">
-          Select date range to retrieve attendance records
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {ATTENDANCE_DATE_RANGE.map((date) => (
-          <Button
-            key={date.label}
-            variant={selectedDateRange === date.label ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleDateRangeClick(date)}
-          >
-            {date.label}
-          </Button>
-        ))}
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_1px_2px_rgb(24_24_27/0.03)] xl:flex-row xl:items-end">
+      <div className="space-y-1.5">
+        <div className="eyebrow px-0.5">Period</div>
+        <div className="inline-flex flex-wrap rounded-lg bg-secondary p-1">
+          {ATTENDANCE_DATE_RANGE.map((date) => (
+            <button
+              key={date.label}
+              type="button"
+              onClick={() => handleDateRangeClick(date)}
+              className={cn(
+                "cursor-pointer rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
+                selectedDateRange === date.label
+                  ? "bg-card text-foreground shadow-[0_1px_3px_rgb(24_24_27/0.1)]"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {date.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex items-end gap-3 mt-4">
-        <div className="w-full space-y-1">
-          <label htmlFor="startDate" className="text-sm flex items-center">
-            <CalendarDays className="w-3.5 h-3.5 mr-1" />
-            <span>Start Date</span>
-          </label>
-          <Input
-            id="startDate"
-            type="date"
-            className="w-full flex flex-col justify-center"
-            value={
-              startDate ? new Date(startDate).toISOString().split("T")[0] : ""
-            }
-            onChange={(e) => setStartDate(e.target.value)}
-          />
+      <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-end">
+        <div className="space-y-1.5">
+          <div className="eyebrow px-0.5">Custom range</div>
+          <div className="flex items-center gap-2">
+            <Input
+              id="startDate"
+              type="date"
+              aria-label="Start date"
+              className="w-[150px]"
+              value={startDate || ""}
+              onChange={(e) => {
+                setSelectedDateRange(null);
+                setStartDate(e.target.value);
+              }}
+            />
+            <ArrowRight size={16} className="shrink-0 text-muted-foreground" />
+            <Input
+              id="endDate"
+              type="date"
+              aria-label="End date"
+              className="w-[150px]"
+              value={endDate || ""}
+              onChange={(e) => {
+                setSelectedDateRange(null);
+                setEndDate(e.target.value);
+              }}
+            />
+          </div>
         </div>
-        <div className="w-full space-y-1">
-          <label htmlFor="endDate" className="text-sm flex items-center">
-            <CalendarDays className="w-3.5 h-3.5 mr-1" />
-            <span>End Date</span>
-          </label>
-          <Input
-            id="endDate"
-            className="w-full flex flex-col justify-center"
-            type="date"
-            value={endDate ? new Date(endDate).toISOString().split("T")[0] : ""}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-        </div>
+        {children && <div className="md:w-56">{children}</div>}
         <Button
-          className="flex items-center gap-2"
-          onClick={handleGetAttendance}
+          className="md:ml-auto"
+          disabled={!startDate || !endDate || isLoading}
+          onClick={() => onGetAttendance(startDate, endDate)}
         >
-          <Download className="w-4 h-4" />
-          Get Attendance Records
+          {isLoading ? <Spinner /> : <SearchNormal1 />}
+          Show records
         </Button>
       </div>
     </div>
