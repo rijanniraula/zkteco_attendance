@@ -1,211 +1,157 @@
 # ZKTeco Attendance Management System
 
-A comprehensive attendance management system that integrates with ZKTeco biometric devices to monitor, track, and report employee attendance in real-time.
+An attendance system for ZKTeco biometric devices. The backend syncs device punches into its own SQLite database, so history stays available when the device is offline. Employees log in to see their own attendance. A super admin manages users, holidays, shift times and status corrections.
 
 ## Features
 
-### 🔄 Real-Time Monitoring
+### 👤 Accounts and roles
 
-- Live attendance tracking with instant feedback
-- Automatic voice notifications for attendance status
-- Real-time log monitoring from ZKTeco devices
+- **Super admin**: manages users, links them to device users, configures holidays and shift groups, corrects attendance, exports reports
+- **Employee**: sees only their own attendance history, with date filters
+- Login with email and password (JWT). New and reset accounts must change their password at first login.
 
-### 📊 Device Management
+### 🔄 Device sync
 
-- Device connection status monitoring
-- User count and log capacity tracking
-- Device information display
+- Pulls all punches and device users into SQLite at startup and every few minutes (configurable)
+- Records live punches instantly and speaks "Thank You" or "Sorry Attendance not recorded"
+- Remembers the device IP. It searches the local network only when the saved IP stops answering.
 
-### 📋 Attendance Reports
+### 📋 Attendance rules
 
-- Date range filtering for attendance logs
-- Comprehensive attendance reports with statistics
-- Export functionality to Excel format
+Each day's status comes from the first rule that applies:
 
-### 🎯 Smart Attendance Logic
+1. **Admin correction**: always wins. Requires a reason and is recorded in the audit log.
+2. **Holiday**: weekly days off (default Saturday and Sunday) or a specific holiday date
+3. **Punches**: the first punch at or after the user's shift group "late after" time counts as Late, otherwise Present. Flexible groups are never late.
+4. **No punch**: Absent for past days, Pending for today until the shift ends
 
-- Staff and part-time employee categorization
-- Late attendance detection and notifications
-- Automated attendance validation
+Shift groups support per-weekday exceptions (for example, Friday ends at 13:15). The default groups are Regular (late after 09:41), Staff (late after 08:45) and Part-time (flexible).
+
+### 📊 Reports
+
+- Users × days grid with Present / Late / Absent / Leave / Holiday totals
+- Click a cell to correct it, for example when the device was down
+- Excel export, optionally with punch times
 
 ## Tech Stack
 
-### Backend
-
-- **Node.js** with Express.js
-- **MongoDB** with Mongoose (currently commented out)
-- **ZKTeco JS Library** for device communication
-- **ExcelJS** for report generation
-- **Text-to-Speech** integration for voice notifications
-
-### Frontend
-
-- **React 19** with Vite
-- **Tailwind CSS** for styling
-- **React Router** for navigation
-- **TanStack Table** for data display
-- **Radix UI** components
-- **Lucide React** icons
+- **Backend**: Node.js, Express 5, SQLite (better-sqlite3), JWT (jsonwebtoken + bcryptjs), zod, zkteco-js, ExcelJS, say
+- **Frontend**: React 19, Vite, Tailwind CSS, React Router, Radix UI, Lucide icons
 
 ## Project Structure
 
 ```
-zktec_logs/
-├── attend_backend/          # Node.js/Express backend
-│   ├── src/
-│   │   ├── config/         # Database and constants
-│   │   ├── controllers/    # ZKTeco device controllers
-│   │   ├── helpers/        # Utility functions and report generation
-│   │   ├── models/         # Data models
-│   │   ├── routes/         # API routes
-│   │   └── server.js       # Main server file
-│   └── package.json
-├── attend_frontend/         # React frontend
-│   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── pages/         # Page components
-│   │   ├── helpers/       # API utilities
-│   │   └── lib/           # Constants and utilities
-│   └── package.json
-└── README.md
+attend_backend/
+├── data/attendance.db      # SQLite database (gitignored, created automatically)
+├── src/
+│   ├── db/                 # connection, migration runner, migrations/*.sql
+│   ├── services/           # device connection, sync, attendance rules, Excel, settings, audit
+│   ├── middleware/         # auth (JWT + roles), request validation
+│   ├── controllers/        # auth, me, admin/*
+│   ├── routes/             # /api/auth, /api/me, /api/admin
+│   ├── scripts/            # seed-admin, import-usermap
+│   └── server.js
+└── test/                   # node --test unit tests
+attend_frontend/
+└── src/
+    ├── context/            # AuthContext (token + current user)
+    ├── components/         # layout, attendance grid, dialogs, ui/*
+    ├── pages/              # login, change-password, my-attendance, admin/*
+    └── helpers/            # API client and constants
 ```
 
 ## Installation
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn
-- ZKTeco biometric device connected to the network
+- Node.js 20 or higher
+- A ZKTeco device on the same network as the backend
 
-### Backend Setup
-
-1. Navigate to the backend directory:
+### Backend
 
 ```bash
 cd attend_backend
-```
-
-2. Install dependencies:
-
-```bash
 npm install
 ```
 
-3. Create a `.env` file in the backend root with your configuration:
+Create `attend_backend/.env`:
 
 ```env
 PORT=3000
-MONGODB_URI =
 NODE_ENV=development
-ZK_IP
-ZK_PORT
-ZK_TIMEOUT=
-ZK_INOUT=
+TZ=Asia/Kathmandu            # must match the device's local time
 
+JWT_SECRET=change-me-to-a-long-random-string
+JWT_EXPIRES_IN=7d
+CORS_ORIGIN=http://localhost:5173   # comma-separated frontend origins; empty = allow all
+
+SEED_ADMIN_NAME="Super Admin"
+SEED_ADMIN_EMAIL=admin@example.com
+SEED_ADMIN_PASSWORD=at-least-8-chars
+
+ZK_IP=192.168.1.20           # optional fallback; the last found IP is saved in the database
+ZK_PORT=4370
+ZK_TIMEOUT=10000
+ZK_INOUT=4000
+# DB_PATH=./data/attendance.db
 ```
 
-4. Start the backend server:
+Create the first super admin, then start the server. Migrations run automatically on startup.
 
 ```bash
-# Development mode
-npm run dev
-
-# Production mode
-npm start
+npm run seed:admin
+npm run dev        # or: npm start
 ```
 
-### Frontend Setup
+Running `seed:admin` again resets that admin's password to the value in `.env`.
 
-1. Navigate to the frontend directory:
+#### Importing the old usersMap.js (optional)
+
+If you have the old hard-coded `usersMap.js`, you can import it once. Each entry becomes an employee linked to its device user ID, gets the Staff, Part-time or Regular group based on the old UID lists, and gets a placeholder email (`user<id>@attendance.local`) that you can edit later on the Users page.
+
+```bash
+IMPORT_DEFAULT_PASSWORD=temporary-pass npm run import:usermap path/to/usersMap.js
+```
+
+### Frontend
 
 ```bash
 cd attend_frontend
-```
-
-2. Install dependencies:
-
-```bash
 npm install
-```
-
-3. Start the development server:
-
-```bash
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:5173`
+The frontend calls `http://localhost:3000/api/` by default. To point it at another backend (for example an ngrok URL), create `attend_frontend/.env`:
 
-## API Endpoints
+```env
+VITE_API_URL=https://your-backend.example.com/api/
+```
 
-### Device Management
+Also add the frontend's origin to the backend's `CORS_ORIGIN`.
 
-- `GET /api/device-info` - Get ZKTeco device information
-- `POST /api/attendance-logs` - Get filtered attendance logs
-- `POST /api/export-logs` - Export attendance logs to Excel
+## API
 
-### Real-Time Features
+All routes except login need `Authorization: Bearer <token>`.
 
-- Automatic real-time log monitoring on server startup
-- Voice notifications for attendance status
-- Late attendance detection
-
-## Configuration
-
-### Device Configuration
-
-The system connects to ZKTeco devices using the `zkteco-js` library. Ensure your device is:
-
-- Connected to the same network as the server
-- Properly configured with IP address and port
-- Accessible via the network
-
-### Attendance Rules
-
-- **Staff UIDs**: [7, 21, 24, 25] (defined in `constants.js`)
-- **Part-time UIDs**: [2] (defined in `constants.js`)
-- Late attendance triggers voice notification: "Sorry Attendance not recorded"
-- On-time attendance triggers: "Thank You"
-
-## Usage
-
-1. **Device Connection**: The system automatically attempts to connect to the ZKTeco device on startup
-2. **Real-Time Monitoring**: The backend continuously monitors attendance logs
-3. **Web Interface**: Use the React frontend to:
-   - View device status and information
-   - Filter and view attendance logs by date range
-   - Export attendance reports to Excel
-   - Monitor real-time statistics
+| Method | Path | Who |
+|---|---|---|
+| POST | `/api/auth/login` | anyone |
+| GET | `/api/auth/me` · POST `/api/auth/change-password` | logged in |
+| GET | `/api/me/attendance?start=YYYY-MM-DD&end=YYYY-MM-DD` | logged in (own data) |
+| GET/POST/PATCH/DELETE | `/api/admin/users[/:id]` | super admin |
+| GET | `/api/admin/device/info` · `/api/admin/device/users` · POST `/api/admin/device/sync` | super admin |
+| GET | `/api/admin/attendance?start&end&userId` · POST `/api/admin/attendance/export` | super admin |
+| PUT | `/api/admin/attendance/override` · DELETE `/api/admin/attendance/override/:id` | super admin |
+| GET/POST/DELETE | `/api/admin/holidays[/:id]` (POST takes `date`, optional `endDate`, `name`) · POST `/api/admin/holidays/delete` `{ids}` | super admin |
+| GET/PUT | `/api/admin/settings` (weekly_off_days, sync_interval_min, zk_ip) | super admin |
+| GET/POST/PUT/DELETE | `/api/admin/shift-groups[/:id]` | super admin |
 
 ## Development
 
-### Running Tests
-
 ```bash
-# Backend tests (if implemented)
-cd attend_backend
-npm test
-
-# Frontend linting
-cd attend_frontend
-npm run lint
+cd attend_backend && npm test     # attendance rule unit tests
+cd attend_frontend && npm run lint
+cd attend_frontend && npm run build
 ```
 
-### Building for Production
-
-```bash
-# Build frontend
-cd attend_frontend
-npm run build
-
-# The built files will be in the 'dist' directory
-```
-
-## Support
-
-For issues related to:
-
-- ZKTeco device connectivity: Check device network configuration
-- API endpoints: Review backend logs for error messages
-- Frontend issues: Check browser console for errors
+Schema changes go in a new file under `attend_backend/src/db/migrations/` (for example `002_add_x.sql`). It is applied once, in name order, on the next startup.

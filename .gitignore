@@ -4,3 +4,8 @@ package-lock.json
 
 usersMap.js
 users.js
+# SQLite data
+attend_backend/data/
+*.db
+*.db-wal
+*.db-shm
